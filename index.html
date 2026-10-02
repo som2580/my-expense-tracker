@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="lo">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ບັນທຶກລາຍຮັບ-ລາຍຈ່າຍ | Personal Finance Tracker</title>
+<meta name="description" content="ລະບົບບັນທຶກລາຍຮັບ-ລາຍຈ່າຍສ່ວນຕົວ ໃຊ້ Google Sheets ເປັນຖານຂໍ້ມູນ ເບິ່ງສະຫຼຸບການເງິນ ແລະ ກຣາຟໄດ້ທັນທີ" />
+<meta name="theme-color" content="#2563eb" />
+
+<!-- Open Graph -->
+<meta property="og:title" content="ບັນທຶກລາຍຮັບ-ລາຍຈ່າຍສ່ວນຕົວ" />
+<meta property="og:description" content="ບັນທຶກລາຍຮັບ-ລາຍຈ່າຍສ່ວນຕົວດ້ວຍ Google Sheets" />
+<meta property="og:type" content="website" />
+
+<!-- Favicon (inline SVG) -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>" />
+<link rel="stylesheet" href="style.css">
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay" aria-hidden="true">
+  <div class="spinner" role="status" aria-label="ກຳລັງໂຫຼດ"></div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+<!-- Mobile Sidebar Backdrop -->
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+<div class="app">
+
+  <!-- ==================== SIDEBAR ==================== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo"><i class="fa-solid fa-wallet"></i></div>
+      <span>ບັນທຶກການເງິນ</span>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="ເມນູຫຼັກ">
+      <button class="nav-item active" data-page="dashboard">
+        <i class="fa-solid fa-chart-pie"></i>
+        <span>ພາບລວມ</span>
+      </button>
+      <button class="nav-item" data-page="transactions">
+        <i class="fa-solid fa-list-ul"></i>
+        <span>ລາຍການທັງໝົດ</span>
+      </button>
+      <button class="nav-item" data-page="add">
+        <i class="fa-solid fa-circle-plus"></i>
+        <span>ເພີ່ມລາຍການ</span>
+      </button>
+      <button class="nav-item" data-page="settings">
+        <i class="fa-solid fa-gear"></i>
+        <span>ຕັ້ງຄ່າ</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div>ບັນທຶກການເງິນສ່ວນຕົວ</div>
+      <div style="margin-top:2px;">v1.0</div>
+    </div>
+  </aside>
+
+  <!-- ==================== MAIN ==================== -->
+  <div class="main">
+
+    <!-- Header -->
+    <header class="header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="menu-toggle" id="menuToggle" aria-label="ເປີດເມນູ">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="header-title" id="headerTitle">ພາບລວມ</div>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn btn-ghost btn-icon" id="refreshBtn" title="ໂຫຼດຂໍ້ມູນໃໝ່" aria-label="ໂຫຼດຂໍ້ມູນໃໝ່">
+          <i class="fa-solid fa-rotate"></i>
+        </button>
+        <button class="btn btn-primary" data-page="add">
+          <i class="fa-solid fa-plus"></i>
+          <span class="btn-text">ເພີ່ມລາຍການ</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ==================== PAGE: DASHBOARD ==================== -->
+    <section class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div>
+          <h1>ພາບລວມການເງິນ</h1>
+          <p id="dashboardSubtitle">ສະຫຼຸບຂໍ້ມູນຂອງທ່ານ</p>
+        </div>
+      </div>
+
+      <!-- Period selector -->
+      <div class="period-bar" id="periodBar">
+        <button class="period-btn" data-period="today">ມື້ນີ້</button>
+        <button class="period-btn" data-period="7days">7 ວັນ</button>
+        <button class="period-btn active" data-period="thisMonth">ເດືອນນີ້</button>
+        <button class="period-btn" data-period="lastMonth">ເດືອນແລ້ວ</button>
+        <button class="period-btn" data-period="thisYear">ປີນີ້</button>
+        <button class="period-btn" data-period="all">ທັງໝົດ</button>
+        <button class="period-btn" data-period="custom">ກຳນົດເອງ</button>
+
+        <div class="custom-range" id="customRange">
+          <input type="date" id="customStart" aria-label="ວັນທີເລີ່ມຕົ້ນ" />
+          <span style="color:var(--neutral-400);">→</span>
+          <input type="date" id="customEnd" aria-label="ວັນທີສິ້ນສຸດ" />
+          <button class="btn btn-primary" id="applyCustomRange">ໃຊ້</button>
+        </div>
+      </div>
+
+      <!-- Summary cards -->
+      <div class="summary-grid">
+        <div class="summary-card income">
+          <div class="summary-card-head">
+            <span class="summary-label">ລາຍຮັບທັງໝົດ</span>
+            <div class="summary-icon"><i class="fa-solid fa-arrow-down"></i></div>
+          </div>
+          <div class="summary-value income" id="cardIncome">₭0</div>
+          <div class="summary-sub" id="cardIncomeSub">—</div>
+        </div>
+
+        <div class="summary-card expense">
+          <div class="summary-card-head">
+            <span class="summary-label">ລາຍຈ່າຍທັງໝົດ</span>
+            <div class="summary-icon"><i class="fa-solid fa-arrow-up"></i></div>
+          </div>
+          <div class="summary-value expense" id="cardExpense">₭0</div>
+          <div class="summary-sub" id="cardExpenseSub">—</div>
+        </div>
+
+        <div class="summary-card balance">
+          <div class="summary-card-head">
+            <span class="summary-label">ຍອດຄົງເຫຼືອ</span>
+            <div class="summary-icon"><i class="fa-solid fa-wallet"></i></div>
+          </div>
+          <div class="summary-value balance" id="cardBalance">₭0</div>
+          <div class="summary-sub" id="cardBalanceSub">—</div>
+        </div>
+
+        <div class="summary-card count">
+          <div class="summary-card-head">
+            <span class="summary-label">ຈຳນວນລາຍການ</span>
+            <div class="summary-icon"><i class="fa-solid fa-receipt"></i></div>
+          </div>
+          <div class="summary-value" id="cardCount">0</div>
+          <div class="summary-sub" id="cardCountSub">—</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="charts-grid">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title"><i class="fa-solid fa-chart-column"></i> ລາຍຮັບ / ລາຍຈ່າຍ</div>
+          </div>
+          <div class="card-body">
+            <div class="chart-wrap"><canvas id="barChart" aria-label="ກຣາຟລາຍຮັບລາຍຈ່າຍ"></canvas></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title"><i class="fa-solid fa-chart-pie"></i> ລາຍຈ່າຍຕາມໝວດໝູ່</div>
+          </div>
+          <div class="card-body">
+            <div class="chart-wrap"><canvas id="pieChart" aria-label="ກຣາຟລາຍຈ່າຍຕາມໝວດໝູ່"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent transactions -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title"><i class="fa-solid fa-clock-rotate-left"></i> ລາຍການຫຼ້າສຸດ</div>
+          <button class="btn btn-outline" data-page="transactions">
+            ເບິ່ງທັງໝົດ <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </div>
+        <div class="recent-list" id="recentList">
+          <!-- filled by JS -->
+        </div>
+      </div>
+
+      <!-- Footer summary -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title"><i class="fa-solid fa-calendar-day"></i> ສະຫຼຸບເດືອນນີ້</div>
+        </div>
+        <div class="card-body">
+          <div class="summary-grid" style="margin-bottom:0;">
+            <div>
+              <div class="summary-label">ລາຍຮັບເດືອນນີ້</div>
+              <div class="summary-value income" style="font-size:18px;" id="monthIncome">₭0</div>
+            </div>
+            <div>
+              <div class="summary-label">ລາຍຈ່າຍເດືອນນີ້</div>
+              <div class="summary-value expense" style="font-size:18px;" id="monthExpense">₭0</div>
+            </div>
+            <div>
+              <div class="summary-label">ຍອດຄົງເຫຼືອເດືອນນີ້</div>
+              <div class="summary-value balance" style="font-size:18px;" id="monthBalance">₭0</div>
+            </div>
+            <div>
+              <div class="summary-label">ໝວດທີ່ໃຊ້ຈ່າຍຫຼາຍສຸດ</div>
+              <div class="summary-value" style="font-size:16px;" id="topCategory">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== PAGE: TRANSACTIONS ==================== -->
+    <section class="page" id="page-transactions">
+      <div class="page-header">
+        <div>
+          <h1>ລາຍການທັງໝົດ</h1>
+          <p>ຄົ້ນຫາ ກັ່ນຕອງ ແລະ ຈັດການທຸລະກຳຂອງທ່ານ</p>
+        </div>
+        <button class="btn btn-primary" data-page="add">
+          <i class="fa-solid fa-plus"></i>
+          <span class="btn-text">ເພີ່ມລາຍການ</span>
+        </button>
+      </div>
+
+      <div class="card">
+        <!-- Filter panel -->
+        <div class="filter-panel">
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="search" id="searchInput" placeholder="ຄົ້ນຫາລາຍລະອຽດ ໝວດໝູ່ ໝາຍເຫດ..." aria-label="ຄົ້ນຫາ" />
+          </div>
+
+          <select class="filter-select" id="filterType" aria-label="ປະເພດລາຍການ">
+            <option value="">ທຸກປະເພດ</option>
+            <option value="income">ລາຍຮັບ</option>
+            <option value="expense">ລາຍຈ່າຍ</option>
+          </select>
+
+          <select class="filter-select" id="filterCategory" aria-label="ໝວດໝູ່">
+            <option value="">ທຸກໝວດໝູ່</option>
+          </select>
+
+          <select class="filter-select" id="filterPayment" aria-label="ວິທີຊຳລະ">
+            <option value="">ທຸກວິທີຊຳລະ</option>
+          </select>
+
+          <select class="filter-select" id="sortBy" aria-label="ຮຽງລຳດັບ">
+            <option value="date-desc">ວັນທີຫຼ້າສຸດ</option>
+            <option value="date-asc">ວັນທີເກົ່າສຸດ</option>
+            <option value="amount-desc">ຈຳນວນຫຼາຍ → ໜ້ອຍ</option>
+            <option value="amount-asc">ຈຳນວນໜ້ອຍ → ຫຼາຍ</option>
+          </select>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ວັນທີ</th>
+                <th>ເວລາ</th>
+                <th>ປະເພດ</th>
+                <th>ໝວດໝູ່</th>
+                <th>ລາຍລະອຽດ</th>
+                <th style="text-align:right;">ຈຳນວນເງິນ</th>
+                <th>ວິທີຊຳລະ</th>
+                <th>ໝາຍເຫດ</th>
+                <th style="text-align:right;">ຈັດການ</th>
+              </tr>
+            </thead>
+            <tbody id="transactionTableBody">
+              <!-- filled by JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <div id="transactionEmpty" class="empty-state hidden">
+          <div class="icon"><i class="fa-regular fa-folder-open"></i></div>
+          <h3>ຍັງບໍ່ມີລາຍການທຸລະກຳ</h3>
+          <p>ເລີ່ມຕົ້ນບັນທຶກລາຍຮັບ-ລາຍຈ່າຍລາຍການທຳອິດຂອງທ່ານ</p>
+          <button class="btn btn-primary" data-page="add">
+            <i class="fa-solid fa-plus"></i> ເພີ່ມລາຍການທຳອິດ
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== PAGE: ADD ==================== -->
+    <section class="page" id="page-add">
+      <div class="page-header">
+        <div>
+          <h1>ເພີ່ມລາຍການໃໝ່</h1>
+          <p>ປ້ອນຂໍ້ມູນລາຍຮັບ ຫຼື ລາຍຈ່າຍຂອງທ່ານ</p>
+        </div>
+      </div>
+
+      <div class="card" style="max-width: 720px;">
+        <div class="card-body">
+          <form id="addForm" novalidate>
+            <!-- Type -->
+            <div class="form-group full" style="margin-bottom:16px;">
+              <label class="form-label">ປະເພດລາຍການ <span class="required">*</span></label>
+              <div class="type-toggle" role="radiogroup" aria-label="ປະເພດລາຍການ">
+                <div class="type-option income" data-type="income" role="radio" aria-checked="false" tabindex="0">
+                  <i class="fa-solid fa-arrow-down"></i>
+                  <div class="label">ລາຍຮັບ</div>
+                </div>
+                <div class="type-option expense selected" data-type="expense" role="radio" aria-checked="true" tabindex="0">
+                  <i class="fa-solid fa-arrow-up"></i>
+                  <div class="label">ລາຍຈ່າຍ</div>
+                </div>
+              </div>
+              <input type="hidden" name="type" id="addType" value="expense" />
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label" for="addDate">ວັນທີ <span class="required">*</span></label>
+                <input type="date" class="form-input" id="addDate" name="date" required />
+                <div class="form-error hidden" data-error="date"></div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="addTime">ເວລາ</label>
+                <input type="time" class="form-input" id="addTime" name="time" />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="addCategory">ໝວດໝູ່ <span class="required">*</span></label>
+                <select class="form-select" id="addCategory" name="category" required></select>
+                <div class="form-error hidden" data-error="category"></div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="addAmount">ຈຳນວນເງິນ <span class="required">*</span></label>
+                <input type="number" class="form-input" id="addAmount" name="amount" min="0" step="1000" placeholder="0" required />
+                <div class="form-error hidden" data-error="amount"></div>
+              </div>
+
+              <div class="form-group full">
+                <label class="form-label" for="addDescription">ລາຍລະອຽດ</label>
+                <input type="text" class="form-input" id="addDescription" name="description" placeholder="ເຊັ່ນ ກາເຟ, ຄ່າອາຫານທ່ຽງ" />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="addPayment">ວິທີການຊຳລະເງິນ</label>
+                <select class="form-select" id="addPayment" name="paymentMethod"></select>
+              </div>
+
+              <div class="form-group full">
+                <label class="form-label" for="addNote">ໝາຍເຫດ</label>
+                <textarea class="form-textarea" id="addNote" name="note" rows="3" placeholder="ບັນທຶກເພີ່ມເຕີມ (ຖ້າມີ)"></textarea>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost" data-page="dashboard">ຍົກເລິກ</button>
+              <button type="submit" class="btn btn-primary" id="addSubmitBtn">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span>ບັນທຶກລາຍການ</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== PAGE: SETTINGS ==================== -->
+    <section class="page" id="page-settings">
+      <div class="page-header">
+        <div>
+          <h1>ຕັ້ງຄ່າ</h1>
+          <p>ກຳນົດຄ່າລະບົບ</p>
+        </div>
+      </div>
+
+      <div class="card" style="max-width: 640px;">
+        <div class="card-body">
+          <div class="form-group" style="margin-bottom:16px;">
+            <label class="form-label" for="settingApiUrl">Google Apps Script Web App URL</label>
+            <input type="url" class="form-input" id="settingApiUrl" placeholder="https://script.google.com/macros/s/.../exec" />
+            <small style="color:var(--neutral-500);font-size:12px;margin-top:4px;">
+              URL ທີ່ໄດ້ຈາກການ Deploy Google Apps Script ເປັນ Web App
+            </small>
+          </div>
+
+          <div class="form-group" style="margin-bottom:16px;">
+            <label class="form-label" for="settingCurrency">ສະກຸນເງິນ</label>
+            <select class="form-select" id="settingCurrency">
+              <option value="LAK">LAK (₭) - ລາວ</option>
+              <option value="THB">THB (฿) - ໄທ</option>
+              <option value="USD">USD ($) - ໂດລາ</option>
+            </select>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-primary" id="saveSettingsBtn">
+              <i class="fa-solid fa-floppy-disk"></i> ບັນທຶກການຕັ້ງຄ່າ
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div><strong>ບັນທຶກການເງິນສ່ວນຕົວ</strong></div>
+      <div>ຂໍ້ມູນການເງິນຂອງທ່ານຖືກເກັບໄວ້ໃນ Google Sheets.</div>
+    </footer>
+  </div>
+</div>
+
+<!-- ==================== MOBILE NAV ==================== -->
+<nav class="mobile-nav" aria-label="ເມນູມືຖື">
+  <button class="mobile-nav-item active" data-page="dashboard">
+    <i class="fa-solid fa-chart-pie"></i>
+    <span>ພາບລວມ</span>
+  </button>
+  <button class="mobile-nav-item" data-page="transactions">
+    <i class="fa-solid fa-list-ul"></i>
+    <span>ລາຍການ</span>
+  </button>
+  <button class="mobile-nav-item" data-page="add">
+    <i class="fa-solid fa-circle-plus"></i>
+    <span>ເພີ່ມ</span>
+  </button>
+  <button class="mobile-nav-item" data-page="settings">
+    <i class="fa-solid fa-gear"></i>
+    <span>ຕັ້ງຄ່າ</span>
+  </button>
+</nav>
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detailModal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="detailTitle">
+        <i class="fa-solid fa-receipt" style="color:var(--primary);"></i>
+        ລາຍລະອຽດລາຍການ
+      </div>
+      <button class="modal-close" data-close="detailModal" aria-label="ປິດ"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-list" id="detailContent"></div>
+      <div class="form-actions">
+        <button class="btn btn-danger" id="detailDeleteBtn"><i class="fa-solid fa-trash"></i> ລຶບ</button>
+        <button class="btn btn-primary" id="detailEditBtn"><i class="fa-solid fa-pen"></i> แກ້ໄຂ</button>
+        <button class="btn btn-ghost" data-close="detailModal">ປິດ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+  <div class="modal wide">
+    <div class="modal-head">
+      <div class="modal-title" id="editTitle">
+        <i class="fa-solid fa-pen" style="color:var(--primary);"></i>
+        แก้ໄຂລາຍການ
+      </div>
+      <button class="modal-close" data-close="editModal" aria-label="ປິດ"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="editForm" novalidate>
+        <input type="hidden" id="editId" />
+
+        <div class="form-grid">
+          <div class="form-group full">
+            <label class="form-label">ປະເພດລາຍການ</label>
+            <div class="type-toggle" role="radiogroup">
+              <div class="type-option income" data-edit-type="income" role="radio" tabindex="0">
+                <i class="fa-solid fa-arrow-down"></i>
+                <div class="label">ລາຍຮັບ</div>
+              </div>
+              <div class="type-option expense" data-edit-type="expense" role="radio" tabindex="0">
+                <i class="fa-solid fa-arrow-up"></i>
+                <div class="label">ລາຍຈ່າຍ</div>
+              </div>
+            </div>
+            <input type="hidden" id="editType" value="expense" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="editDate">ວັນທີ</label>
+            <input type="date" class="form-input" id="editDate" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="editTime">ເວລາ</label>
+            <input type="time" class="form-input" id="editTime" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="editCategory">ໝວດໝູ່</label>
+            <select class="form-select" id="editCategory" required></select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="editAmount">ຈຳນວນເງິນ</label>
+            <input type="number" class="form-input" id="editAmount" min="0" step="1000" required />
+          </div>
+
+          <div class="form-group full">
+            <label class="form-label" for="editDescription">ລາຍລະອຽດ</label>
+            <input type="text" class="form-input" id="editDescription" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="editPayment">ວິທີການຊຳລະເງິນ</label>
+            <select class="form-select" id="editPayment"></select>
+          </div>
+
+          <div class="form-group full">
+            <label class="form-label" for="editNote">ໝາຍເຫດ</label>
+            <textarea class="form-textarea" id="editNote" rows="2"></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-close="editModal">ຍົກເລິກ</button>
+          <button type="submit" class="btn btn-primary" id="editSubmitBtn">
+            <i class="fa-solid fa-floppy-disk"></i> ບັນທຶກການແກ້ໄຂ
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div class="modal-overlay" id="confirmModal" role="alertdialog" aria-modal="true">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-body" style="text-align:center;padding:32px 24px;">
+      <div style="width:56px;height:56px;border-radius:50%;background:var(--expense-light);color:var(--expense);display:grid;place-items:center;margin:0 auto 16px;font-size:24px;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h3 style="font-size:17px;font-weight:700;color:var(--neutral-900);margin-bottom:6px;">ທ່ານຕ້ອງການລຶບລາຍການນີ້ຫຼືບໍ່?</h3>
+      <p style="font-size:14px;color:var(--neutral-500);margin-bottom:20px;">ການລຶບຈະບໍ່ສາມາດຍ້ອນກັບໄດ້</p>
+      <div style="display:flex;gap:10px;justify-content:center;">
+        <button class="btn btn-ghost" data-close="confirmModal">ຍົກເລິກ</button>
+        <button class="btn btn-danger" id="confirmDeleteBtn"><i class="fa-solid fa-trash"></i> ລຶບລາຍການ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="main.js"></script>
+</body>
+</html>
